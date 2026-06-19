@@ -13,16 +13,32 @@ app.use(express.json());
 // Serve API
 app.use("/api", uploadRoute);
 
-// Serve frontend static files from the process working directory (more reliable on hosts)
-const publicDir = process.cwd();
-app.use(express.static(publicDir));
+// Try several likely locations for the frontend (accounts for Render working dir differences)
+const candidatePaths = [
+    path.join(process.cwd(), 'test.html'),
+    path.join(__dirname, '..', 'test.html'),
+    path.join(__dirname, '..', '..', 'test.html'),
+    path.join(__dirname, '..', '..', '..', 'test.html')
+];
 
-// Serve test.html at the root URL (resolve from working dir)
-app.get("/", (req, res) => {
-    const indexPath = path.join(process.cwd(), "test.html");
-    if (fs.existsSync(indexPath)) return res.sendFile(indexPath);
-    return res.send("Backend Running Successfully");
-});
+let resolvedIndex = null;
+for (const p of candidatePaths) {
+    if (fs.existsSync(p)) {
+        resolvedIndex = p;
+        break;
+    }
+}
+
+if (resolvedIndex) {
+    // Serve static files from the index directory first
+    const staticDir = path.dirname(resolvedIndex);
+    app.use(express.static(staticDir));
+    app.get('/', (req, res) => res.sendFile(resolvedIndex));
+} else {
+    // Fallback to serving from process.cwd() and a plain message if missing
+    app.use(express.static(process.cwd()));
+    app.get('/', (req, res) => res.send('Backend Running Successfully'));
+}
 
 // Download the latest cleaned CSV if present
 app.get('/download', (req, res) => {
