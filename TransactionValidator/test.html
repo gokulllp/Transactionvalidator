@@ -4,26 +4,37 @@
 
 <h2>CSV Upload Test</h2>
 
+<label for="apiUrl">Upload API URL:</label><br>
+<input type="text" id="apiUrl" value="https://transactionvalidator-1.onrender.com/api/upload" style="width:100%;" />
+<br><br>
 <input type="file" id="file">
 <button onclick="upload()">Upload</button>
 
 <script>
 async function upload() {
     const file = document.getElementById("file").files[0];
+    const apiUrl = document.getElementById("apiUrl").value.trim();
+
+    if (!file) {
+        alert("Please choose a CSV file first.");
+        return;
+    }
+
+    if (!apiUrl) {
+        alert("Please enter the upload API URL.");
+        return;
+    }
 
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch(
-        "http://localhost:5000/api/upload",
-        {
-            method: "POST",
-            body: formData
-        }
-    );
+    const response = await fetch(apiUrl, {
+        method: "POST",
+        body: formData
+    });
 
     const result = await response.json();
-    alert(JSON.stringify(result));
+    alert(JSON.stringify(result, null, 2));
 }
 </script>
 
