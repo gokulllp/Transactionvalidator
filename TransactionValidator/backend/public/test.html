@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h2>CSV Upload Test</h2>
+
+<label for="apiUrl">Upload API URL:</label><br>
+<input type="text" id="apiUrl" value="https://transactionvalidator-1.onrender.com/api/upload" style="width:100%;" />
+<br><br>
+<input type="file" id="file">
+<button onclick="upload()">Upload</button>
+<button id="downloadBtn" style="margin-left:8px;">Download last cleaned CSV</button>
+
+<div id="result" style="margin-top:20px;padding:16px;border:1px solid #ccc;border-radius:8px;background:#f9f9f9;display:none;"></div>
+
+<script>
+async function upload() {
+    const file = document.getElementById("file").files[0];
+    const apiUrl = document.getElementById("apiUrl").value.trim();
+    const resultEl = document.getElementById("result");
+
+    resultEl.style.display = "none";
+    resultEl.textContent = "";
+
+    if (!file) {
+        resultEl.style.display = "block";
+        resultEl.textContent = "Please choose a CSV file first.";
+        return;
+    }
+
+    if (!apiUrl) {
+        resultEl.style.display = "block";
+        resultEl.textContent = "Please enter the upload API URL.";
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            body: formData
+        });
+
+        const text = await response.text();
+
+        if (!response.ok) {
+            resultEl.style.display = "block";
+            resultEl.style.color = "red";
+            resultEl.textContent = `Upload failed: ${response.status} ${response.statusText}\n${text}`;
+            return;
+        }
+
+        let result;
+        try {
+            result = JSON.parse(text);
+        } catch (err) {
+            resultEl.style.display = "block";
+            resultEl.style.color = "red";
+            resultEl.textContent = `Invalid JSON response:\n${text}`;
+            return;
+        }
+
+        resultEl.style.display = "block";
+        resultEl.style.color = "black";
+        resultEl.innerHTML = `<strong>Upload successful</strong><pre>${JSON.stringify(result, null, 2)}</pre>`;
+    } catch (error) {
+        resultEl.style.display = "block";
+        resultEl.style.color = "red";
+        resultEl.textContent = `Request error: ${error.message}`;
+    }
+}
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+    const apiUrl = document.getElementById('apiUrl').value.trim();
+    let base;
+    try {
+        base = new URL(apiUrl).origin;
+    } catch (e) {
+        base = window.location.origin;
+    }
+    window.location.href = base + '/download';
+});
+</script>
+
+</body>
+</html>
