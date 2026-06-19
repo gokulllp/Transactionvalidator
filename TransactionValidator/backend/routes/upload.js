@@ -3,6 +3,8 @@ const multer = require("multer");
 const fs = require("fs");
 const csv = require("csv-parser");
 const { Parser } = require("json2csv");
+const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 const validatePhone = require("../validators/phonevalidator");
 const validateDate = require("../validators/datevalidator");
@@ -107,11 +109,48 @@ router.post("/upload", upload.single("file"), (req, res) => {
                     "cleaned.csv created successfully"
                 );
 
-                res.json({
-                    totalRows: results.length,
-                    validRows: validRows.length,
-                    output: "cleaned.csv"
-                });
+                // If S3 is configured, upload cleaned.csv and return a presigned URL
+                (async () => {
+                    try {
+                        const bucket = process.env.S3_BUCKET;
+                        const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION;
+
+                        if (bucket && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+                            const s3 = new S3Client({ region: region });
+
+                            const key = `cleaned-${Date.now()}.csv`;
+                            const filePath = path.resolve(process.cwd(), 'output', 'cleaned.csv');
+                            const fileStream = fs.createReadStream(filePath);
+
+                            await s3.send(new PutObjectCommand({
+                                Bucket: bucket,
+                                Key: key,
+                                Body: fileStream,
+                                ContentType: 'text/csv'
+                            }));
+
+                            // Create presigned GET URL
+                            const getCommand = new GetObjectCommand({ Bucket: bucket, Key: key });
+                            const url = await getSignedUrl(s3, getCommand, { expiresIn: 60 * 60 });
+
+                            return res.json({
+                                totalRows: results.length,
+                                validRows: validRows.length,
+                                output: 'cleaned.csv',
+                                s3Url: url
+                            });
+                        }
+                    } catch (err) {
+                        console.error('S3 upload error:', err);
+                        // fall through to return local result
+                    }
+
+                    return res.json({
+                        totalRows: results.length,
+                        validRows: validRows.length,
+                        output: 'cleaned.csv'
+                    });
+                })();
 
             })
 
