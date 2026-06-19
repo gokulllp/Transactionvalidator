@@ -9,6 +9,7 @@
 <br><br>
 <input type="file" id="file">
 <button onclick="upload()">Upload</button>
+<button id="downloadBtn" style="margin-left:8px;">Download last cleaned CSV</button>
 
 <div id="result" style="margin-top:20px;padding:16px;border:1px solid #ccc;border-radius:8px;background:#f9f9f9;display:none;"></div>
 
@@ -70,6 +71,17 @@ async function upload() {
         resultEl.textContent = `Request error: ${error.message}`;
     }
 }
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+    const apiUrl = document.getElementById('apiUrl').value.trim();
+    let base;
+    try {
+        base = new URL(apiUrl).origin;
+    } catch (e) {
+        base = window.location.origin;
+    }
+    window.location.href = base + '/download';
+});
 </script>
 
 </body>
