@@ -4,26 +4,71 @@
 
 <h2>CSV Upload Test</h2>
 
+<label for="apiUrl">Upload API URL:</label><br>
+<input type="text" id="apiUrl" value="http://localhost:5000/api/upload" style="width:100%;" />
+<br><br>
 <input type="file" id="file">
 <button onclick="upload()">Upload</button>
+
+<div id="result" style="margin-top:20px;padding:16px;border:1px solid #ccc;border-radius:8px;background:#f9f9f9;display:none;"></div>
 
 <script>
 async function upload() {
     const file = document.getElementById("file").files[0];
+    const apiUrl = document.getElementById("apiUrl").value.trim();
+    const resultEl = document.getElementById("result");
+
+    resultEl.style.display = "none";
+    resultEl.textContent = "";
+
+    if (!file) {
+        resultEl.style.display = "block";
+        resultEl.textContent = "Please choose a CSV file first.";
+        return;
+    }
+
+    if (!apiUrl) {
+        resultEl.style.display = "block";
+        resultEl.textContent = "Please enter the upload API URL.";
+        return;
+    }
 
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch(
-        "http://localhost:5000/api/upload",
-        {
+    try {
+        const response = await fetch(apiUrl, {
             method: "POST",
             body: formData
-        }
-    );
+        });
 
-    const result = await response.json();
-    alert(JSON.stringify(result));
+        const text = await response.text();
+
+        if (!response.ok) {
+            resultEl.style.display = "block";
+            resultEl.style.color = "red";
+            resultEl.textContent = `Upload failed: ${response.status} ${response.statusText}\n${text}`;
+            return;
+        }
+
+        let result;
+        try {
+            result = JSON.parse(text);
+        } catch (err) {
+            resultEl.style.display = "block";
+            resultEl.style.color = "red";
+            resultEl.textContent = `Invalid JSON response:\n${text}`;
+            return;
+        }
+
+        resultEl.style.display = "block";
+        resultEl.style.color = "black";
+        resultEl.innerHTML = `<strong>Upload successful</strong><pre>${JSON.stringify(result, null, 2)}</pre>`;
+    } catch (error) {
+        resultEl.style.display = "block";
+        resultEl.style.color = "red";
+        resultEl.textContent = `Request error: ${error.message}`;
+    }
 }
 </script>
 
