@@ -4,8 +4,8 @@ const fs = require("fs");
 const csv = require("csv-parser");
 const { Parser } = require("json2csv");
 
-const validatePhone = require("../validators/phoneValidator");
-const validateDate = require("../validators/dateValidator");
+const validatePhone = require("../validators/phonevalidator");
+const validateDate = require("../validators/datevalidator");
 
 const router = express.Router();
 
