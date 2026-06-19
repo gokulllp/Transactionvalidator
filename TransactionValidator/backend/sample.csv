@@ -1,0 +1,4 @@
+order_id,product_name,payment_mode,phone,country,order_date
+1,Laptop,UPI,9876543210,India,2025-04-10
+2,Mobile,CARD,12345,India,2025-04-10
+3,Watch,CASH,87654321,Singapore,2025-04-11
