@@ -13,13 +13,15 @@ app.use(express.json());
 // Serve API
 app.use("/api", uploadRoute);
 
-// Serve frontend static files from the repository root
-const publicDir = path.join(__dirname, "..", ".."); // repo root
+// Serve frontend static files from the process working directory (more reliable on hosts)
+const publicDir = process.cwd();
 app.use(express.static(publicDir));
 
-// Serve test.html at the root URL
+// Serve test.html at the root URL (resolve from working dir)
 app.get("/", (req, res) => {
-    res.sendFile(path.join(publicDir, "test.html"));
+    const indexPath = path.join(process.cwd(), "test.html");
+    if (fs.existsSync(indexPath)) return res.sendFile(indexPath);
+    return res.send("Backend Running Successfully");
 });
 
 // Download the latest cleaned CSV if present
