@@ -33,44 +33,151 @@ async function upload() {
         return;
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Transaction Validator</title>
+        <style>
+            :root{font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;color:#222}
+            body{margin:0;background:#f4f6f8}
+            header{background:#1f2937;color:#fff;padding:20px 24px}
+            .container{max-width:960px;margin:28px auto;padding:20px;background:#fff;border-radius:8px;box-shadow:0 6px 20px rgba(16,24,40,.08)}
+            h1{margin:0;font-size:20px}
+            label{font-weight:600;margin-top:12px;display:block}
+            input[type=text]{width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px}
+            .row{display:flex;gap:12px;align-items:center;margin-top:12px}
+            .btn{background:#2563eb;color:#fff;padding:8px 12px;border:none;border-radius:6px;cursor:pointer}
+            .btn.secondary{background:#6b7280}
+            #progress{width:100%;height:10px;background:#e5e7eb;border-radius:6px;overflow:hidden;margin-top:12px}
+            #progress > i{display:block;height:100%;background:linear-gradient(90deg,#60a5fa,#2563eb);width:0%}
+            pre{background:#f8fafc;padding:12px;border-radius:6px;overflow:auto}
+            table{width:100%;border-collapse:collapse;margin-top:12px}
+            th,td{border:1px solid #e6eef8;padding:8px;text-align:left}
+            .meta{display:flex;gap:18px;margin-top:12px}
+            .link{color:#2563eb}
+            footer{font-size:13px;color:#6b7280;margin-top:12px}
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>Transaction Validator — Upload CSV</h1>
+        </header>
 
-    try {
-        const response = await fetch(apiUrl, {
-            method: "POST",
-            body: formData
-        });
+        <div class="container">
+            <label for="apiUrl">Upload API URL</label>
+            <input id="apiUrl" type="text" value="https://transactionvalidator-1.onrender.com/api/upload" />
 
-        const text = await response.text();
+            <label for="file">CSV File</label>
+            <div class="row">
+                <input id="file" type="file" accept="text/csv" />
+                <button id="uploadBtn" class="btn">Upload</button>
+                <button id="downloadBtn" class="btn secondary">Download last cleaned CSV</button>
+            </div>
 
-        if (!response.ok) {
-            resultEl.style.display = "block";
-            resultEl.style.color = "red";
-            resultEl.textContent = `Upload failed: ${response.status} ${response.statusText}\n${text}`;
-            return;
-        }
+            <div id="progress" aria-hidden="true"><i></i></div>
 
-        let result;
-        try {
-            result = JSON.parse(text);
-        } catch (err) {
-            resultEl.style.display = "block";
-            resultEl.style.color = "red";
-            resultEl.textContent = `Invalid JSON response:\n${text}`;
-            return;
-        }
+            <div class="meta">
+                <div id="status"></div>
+                <div id="counts"></div>
+            </div>
 
-        resultEl.style.display = "block";
-        resultEl.style.color = "black";
-        resultEl.innerHTML = `<strong>Upload successful</strong><pre>${JSON.stringify(result, null, 2)}</pre>`;
-    } catch (error) {
-        resultEl.style.display = "block";
-        resultEl.style.color = "red";
-        resultEl.textContent = `Request error: ${error.message}`;
-    }
-}
-</script>
+            <div id="result" style="margin-top:12px;display:none"></div>
 
-</body>
-</html>
+            <div id="preview" style="margin-top:12px;display:none">
+                <h3>CSV Preview (first 10 rows)</h3>
+                <div id="previewTable"></div>
+            </div>
+
+            <footer>
+                <div>Note: Uploaded files are processed and a cleaned CSV is produced. Use the Download button to retrieve the latest cleaned file. For persistent storage use S3 (see README).</div>
+            </footer>
+        </div>
+
+        <script>
+            const uploadBtn = document.getElementById('uploadBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const apiUrlInput = document.getElementById('apiUrl');
+            const fileInput = document.getElementById('file');
+            const progressBar = document.querySelector('#progress > i');
+            const statusEl = document.getElementById('status');
+            const countsEl = document.getElementById('counts');
+            const resultEl = document.getElementById('result');
+            const previewEl = document.getElementById('preview');
+            const previewTable = document.getElementById('previewTable');
+
+            function resetUI(){
+                progressBar.style.width='0%';
+                statusEl.textContent='';
+                countsEl.textContent='';
+                resultEl.style.display='none';
+                previewEl.style.display='none';
+                previewTable.innerHTML='';
+            }
+
+            function parseCSV(text, limit=10){
+                const lines = text.trim().split(/\r?\n/).filter(Boolean);
+                if(lines.length===0) return {headers:[],rows:[]};
+                const headers = lines[0].split(',').map(h=>h.trim());
+                const rows = lines.slice(1,1+limit).map(l=>l.split(',').map(c=>c.trim()));
+                return {headers,rows};
+            }
+
+            uploadBtn.addEventListener('click', ()=>{
+                resetUI();
+                const file = fileInput.files[0];
+                const apiUrl = apiUrlInput.value.trim();
+                if(!file){ alert('Please choose a CSV file'); return; }
+                if(!apiUrl){ alert('Enter API URL'); return; }
+
+                // Preview locally
+                const reader = new FileReader();
+                reader.onload = ()=>{
+                    const parsed = parseCSV(reader.result,10);
+                    if(parsed.rows.length){
+                        previewEl.style.display='block';
+                        let html = '<table><thead><tr>' + parsed.headers.slice(0,8).map(h=>`<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+                        parsed.rows.forEach(r=>{ html += '<tr>' + r.slice(0,8).map(c=>`<td>${c}</td>`).join('') + '</tr>'; });
+                        html += '</tbody></table>';
+                        previewTable.innerHTML = html;
+                    }
+                };
+                reader.readAsText(file);
+
+                // Upload with progress
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', apiUrl, true);
+                xhr.upload.onprogress = (e)=>{
+                    if(e.lengthComputable){ const pct = Math.round((e.loaded/e.total)*100); progressBar.style.width = pct + '%'; }
+                };
+                xhr.onload = ()=>{
+                    progressBar.style.width = '100%';
+                    if(xhr.status>=200 && xhr.status<300){
+                        let json;
+                        try{ json = JSON.parse(xhr.responseText); }catch(e){ resultEl.style.display='block'; resultEl.innerHTML = '<pre>Invalid JSON response:\n'+xhr.responseText+'</pre>'; return; }
+                        resultEl.style.display='block';
+                        resultEl.innerHTML = '<strong>Upload result</strong><pre>' + JSON.stringify(json, null, 2) + '</pre>';
+                        if(json.totalRows!=null) countsEl.textContent = `Total: ${json.totalRows} · Valid: ${json.validRows}`;
+                        if(json.s3Url){ resultEl.innerHTML += `<div><a class="link" href="${json.s3Url}" target="_blank">Download cleaned CSV (S3)</a></div>`; }
+                        else{ resultEl.innerHTML += `<div><a class="link" href="/download" target="_blank">Download cleaned CSV</a></div>`; }
+                    } else {
+                        resultEl.style.display='block'; resultEl.innerHTML = `<pre>Upload failed: ${xhr.status} ${xhr.statusText}\n${xhr.responseText}</pre>`;
+                    }
+                };
+                xhr.onerror = ()=>{ resultEl.style.display='block'; resultEl.innerHTML = '<pre>Network error during upload</pre>'; };
+                const fd = new FormData(); fd.append('file', file);
+                xhr.send(fd);
+                statusEl.textContent = 'Uploading...';
+            });
+
+            downloadBtn.addEventListener('click', ()=>{
+                const apiUrl = apiUrlInput.value.trim();
+                let base;
+                try{ base = new URL(apiUrl).origin; }catch(e){ base = window.location.origin; }
+                window.open(base + '/download', '_blank');
+            });
+
+        </script>
+    </body>
+    </html>
