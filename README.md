@@ -1,76 +1,71 @@
-# universalify
+# Customer Validation
 
-![GitHub Workflow Status (branch)](https://img.shields.io/github/actions/workflow/status/RyanZim/universalify/ci.yml?branch=master)
-![Coveralls github branch](https://img.shields.io/coveralls/github/RyanZim/universalify/master.svg)
-![npm](https://img.shields.io/npm/dm/universalify.svg)
-![npm](https://img.shields.io/npm/l/universalify.svg)
+A Node.js backend for validating customer CSV data by phone and order date.
 
-Make a callback- or promise-based function support both promises and callbacks.
+## Project structure
 
-Uses the native promise implementation.
+- `TransactionValidator/backend/server.js` - Express backend server
+- `TransactionValidator/backend/routes/upload.js` - CSV upload and validation endpoint
+- `TransactionValidator/backend/validators/` - phone and date validation logic
+- `TransactionValidator/test.html` - simple local upload test page
+- `output/cleaned.csv` - generated output for valid rows
 
-## Installation
+## Run locally
 
-```bash
-npm install universalify
+1. Open PowerShell in the repository root:
+
+```powershell
+cd "e:\customer validation"
 ```
+
+2. Install dependencies:
+
+```powershell
+npm install
+```
+
+3. Start the app:
+
+```powershell
+npm start
+```
+
+4. Open the backend in your browser:
+
+```text
+http://localhost:5000/
+```
+
+5. Open `TransactionValidator/test.html` in a browser and upload a CSV file.
 
 ## API
 
-### `universalify.fromCallback(fn)`
+- `POST /api/upload`
+- Request body: multipart form-data with `file`
+- Response JSON includes:
+  - `totalRows`
+  - `validRows`
+  - `output` (filename)
 
-Takes a callback-based function to universalify, and returns the universalified  function.
+## Deployment
 
-Function must take a callback as the last parameter that will be called with the signature `(error, result)`. `universalify` does not support calling the callback with three or more arguments, and does not ensure that the callback is only called once.
+### Recommended: Render
 
-```js
-function callbackFn (n, cb) {
-  setTimeout(() => cb(null, n), 15)
-}
+1. Create an account at https://render.com
+2. Connect your GitHub repository `gokulllp/Transactionvalidator`
+3. Create a new **Web Service**
+4. Use these settings:
+   - Build command: `npm install`
+   - Start command: `npm start`
+   - Root directory: repository root
+5. Deploy
 
-const fn = universalify.fromCallback(callbackFn)
+### What changed for deployment
 
-// Works with Promises:
-fn('Hello World!')
-.then(result => console.log(result)) // -> Hello World!
-.catch(error => console.error(error))
+- `TransactionValidator/backend/server.js` now listens on `process.env.PORT || 5000`
+- `package.json` includes a root `start` command for deployment
 
-// Works with Callbacks:
-fn('Hi!', (error, result) => {
-  if (error) return console.error(error)
-  console.log(result)
-  // -> Hi!
-})
-```
+## Notes
 
-### `universalify.fromPromise(fn)`
-
-Takes a promise-based function to universalify, and returns the universalified  function.
-
-Function must return a valid JS promise. `universalify` does not ensure that a valid promise is returned.
-
-```js
-function promiseFn (n) {
-  return new Promise(resolve => {
-    setTimeout(() => resolve(n), 15)
-  })
-}
-
-const fn = universalify.fromPromise(promiseFn)
-
-// Works with Promises:
-fn('Hello World!')
-.then(result => console.log(result)) // -> Hello World!
-.catch(error => console.error(error))
-
-// Works with Callbacks:
-fn('Hi!', (error, result) => {
-  if (error) return console.error(error)
-  console.log(result)
-  // -> Hi!
-})
-```
-
-## License
-
-MIT
+- The frontend test page uses `http://localhost:5000/api/upload`.
+- If you deploy the backend, update the front-end upload URL to the deployed service URL.
